@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ベイブレードX バトルレコード</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            touch-action: manipulation; /* ダブルタップによるズームを無効化 */
+        }
+        .player-name {
+            transition: all 0.2s ease-in-out;
+        }
+        .player-name:focus {
+            outline: none;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+        }
+        .score-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .score-btn:active {
+            transform: scale(0.95);
+        }
+        .winner-banner {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* ボタンの無効化スタイル */
+        .disabled-btn {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .spinner {
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-4xl mx-auto">
+        <!-- ヘッダー -->
+        <header class="text-center mb-4">
+            <h1 class="text-4xl md:text-5xl font-black tracking-tight text-cyan-400">
+                BEYBLADE X
+            </h1>
+            <p class="text-lg text-gray-300">BATTLE RECORD</p>
+        </header>
+
+        <!-- 勝者表示 & AI実況エリア -->
+        <div id="result-area" class="text-center mb-4 min-h-[100px] flex flex-col items-center justify-center gap-2">
+            <div id="winner-display" class="min-h-[40px]"></div>
+            <div id="commentary-display" class="min-h-[50px] text-lg text-yellow-300 bg-black bg-opacity-20 p-3 rounded-lg w-full max-w-2xl hidden"></div>
+        </div>
+
+        <!-- プレイヤーエリア -->
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+            <!-- Player 1 -->
+            <div id="player1-card" class="bg-gray-800 p-6 rounded-2xl border-2 border-transparent">
+                <div class="text-center mb-4">
+                    <h2 id="player1-name" contenteditable="true" class="text-3xl font-bold text-cyan-400 p-2 cursor-pointer" spellcheck="false">プレイヤー1</h2>
+                    <p class="text-gray-400">WINS: <span id="player1-wins" class="font-bold">0</span></p>
+                </div>
+                <div class="text-center mb-6">
+                    <p class="text-lg text-gray-400">SCORE</p>
+                    <p id="player1-score" class="text-8xl font-black text-white">0</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="addScore(1, 1)" class="score-btn bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg">スピン +1</button>
+                    <button onclick="addScore(1, 2)" class="score-btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg">オーバー +2</button>
+                    <button onclick="addScore(1, 2)" class="score-btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg">バースト +2</button>
+                    <button onclick="addScore(1, 3)" class="score-btn bg-cyan-700 hover:bg-cyan-800 text-white font-bold py-3 px-4 rounded-lg">エクストリーム +3</button>
+                </div>
+            </div>
+
+            <!-- Player 2 -->
+            <div id="player2-card" class="bg-gray-800 p-6 rounded-2xl border-2 border-transparent">
+                <div class="text-center mb-4">
+                    <h2 id="player2-name" contenteditable="true" class="text-3xl font-bold text-purple-400 p-2 cursor-pointer" spellcheck="false">プレイヤー2</h2>
+                    <p class="text-gray-400">WINS: <span id="player2-wins" class="font-bold">0</span></p>
+                </div>
+                <div class="text-center mb-6">
+                    <p class="text-lg text-gray-400">SCORE</p>
+                    <p id="player2-score" class="text-8xl font-black text-white">0</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="addScore(2, 1)" class="score-btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg">スピン +1</button>
+                    <button onclick="addScore(2, 2)" class="score-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg">オーバー +2</button>
+                    <button onclick="addScore(2, 2)" class="score-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg">バースト +2</button>
+                    <button onclick="addScore(2, 3)" class="score-btn bg-purple-700 hover:bg-purple-800 text-white font-bold py-3 px-4 rounded-lg">エクストリーム +3</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 操作ボタンエリア -->
+        <footer class="mt-8 flex flex-wrap justify-center items-center gap-4">
+            <button id="generate-commentary-btn" onclick="generateCommentary()" class="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-6 rounded-lg hidden">✨ 実況を生成</button>
+            <button onclick="resetRound()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg">次のバトルへ</button>
+            <button onclick="confirmNewGame()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg">ニューゲーム</button>
+            <button id="export-csv-btn" onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg">CSVで保存</button>
+            <button id="clear-history-btn" onclick="confirmClearHistory()" class="bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-3 px-6 rounded-lg">履歴をクリア</button>
+        </footer>
+    </div>
+
+    <!-- 確認モーダル -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl text-center w-11/12 max-w-sm">
+            <p id="modal-message" class="mb-6 text-lg">本当に実行しますか？</p>
+            <div class="flex justify-center gap-4">
+                <button id="modal-confirm-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-8 rounded-lg">はい</button>
+                <button id="modal-cancel-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-8 rounded-lg">いいえ</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- 定数と変数 ---
+        const WINNING_SCORE = 4;
+        let player1Score = 0;
+        let player2Score = 0;
+        let player1Wins = 0;
+        let player2Wins = 0;
+        let gameInProgress = true;
+        let battleHistory = []; // 対戦履歴を保存する配列
+
+        // --- DOM要素の取得 ---
+        const player1ScoreEl = document.getElementById('player1-score');
+        const player2ScoreEl = document.getElementById('player2-score');
+        const player1WinsEl = document.getElementById('player1-wins');
+        const player2WinsEl = document.getElementById('player2-wins');
+        const winnerDisplayEl = document.getElementById('winner-display');
+        const commentaryDisplayEl = document.getElementById('commentary-display');
+        const player1CardEl = document.getElementById('player1-card');
+        const player2CardEl = document.getElementById('player2-card');
+        const player1NameEl = document.getElementById('player1-name');
+        const player2NameEl = document.getElementById('player2-name');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
+        const generateCommentaryBtn = document.getElementById('generate-commentary-btn');
+        const confirmModal = document.getElementById('confirm-modal');
+        const modalMessage = document.getElementById('modal-message');
+
+        // --- 関数 ---
+
+        function addScore(player, points) {
+            if (!gameInProgress) return;
+            if (player === 1) player1Score += points;
+            else player2Score += points;
+            updateUI();
+            checkWinner();
+        }
+
+        function checkWinner() {
+            let winner = null;
+            if (player1Score >= WINNING_SCORE) winner = 1;
+            else if (player2Score >= WINNING_SCORE) winner = 2;
+
+            if (winner) {
+                gameInProgress = false;
+                const p1Name = player1NameEl.textContent;
+                const p2Name = player2NameEl.textContent;
+                const winnerName = winner === 1 ? p1Name : p2Name;
+                
+                const battleResult = {
+                    timestamp: new Date().toLocaleString('ja-JP'),
+                    player1Name: p1Name,
+                    player2Name: p2Name,
+                    winnerName: winnerName,
+                    player1FinalScore: player1Score,
+                    player2FinalScore: player2Score
+                };
+                battleHistory.push(battleResult);
+                
+                if (winner === 1) {
+                    player1Wins++;
+                    winnerDisplayEl.innerHTML = `<h3 class="text-3xl font-bold text-cyan-400 winner-banner">${winnerName} の勝利！</h3>`;
+                    player1CardEl.classList.add('border-cyan-400');
+                } else {
+                    player2Wins++;
+                    winnerDisplayEl.innerHTML = `<h3 class="text-3xl font-bold text-purple-400 winner-banner">${winnerName} の勝利！</h3>`;
+                    player2CardEl.classList.add('border-purple-400');
+                }
+                generateCommentaryBtn.classList.remove('hidden'); // AI実況ボタンを表示
+            }
+            updateUI();
+            updateActionButtons();
+        }
+
+        function updateUI() {
+            player1ScoreEl.textContent = player1Score;
+            player2ScoreEl.textContent = player2Score;
+            player1WinsEl.textContent = player1Wins;
+            player2WinsEl.textContent = player2Wins;
+        }
+        
+        function updateActionButtons() {
+            const hasHistory = battleHistory.length > 0;
+            exportCsvBtn.disabled = !hasHistory;
+            clearHistoryBtn.disabled = !hasHistory;
+            exportCsvBtn.classList.toggle('disabled-btn', !hasHistory);
+            clearHistoryBtn.classList.toggle('disabled-btn', !hasHistory);
+        }
+
+        function resetRound() {
+            player1Score = 0;
+            player2Score = 0;
+            gameInProgress = true;
+            winnerDisplayEl.innerHTML = '';
+            commentaryDisplayEl.innerHTML = '';
+            commentaryDisplayEl.classList.add('hidden');
+            generateCommentaryBtn.classList.add('hidden');
+            generateCommentaryBtn.disabled = false;
+            player1CardEl.classList.remove('border-cyan-400');
+            player2CardEl.classList.remove('border-purple-400');
+            updateUI();
+        }
+        
+        function confirmNewGame() {
+            showConfirmModal('勝ち数を含むすべての記録をリセットしますか？（対戦履歴は消えません）', newGame);
+        }
+
+        function newGame() {
+            player1Wins = 0;
+            player2Wins = 0;
+            resetRound();
+        }
+
+        function exportToCSV() {
+            if (battleHistory.length === 0) return;
+            const headers = ['日時', 'プレイヤー1', 'プレイヤー2', '勝者', 'P1スコア', 'P2スコア'];
+            const csvRows = [headers.join(',')];
+            battleHistory.forEach(battle => {
+                const values = [
+                    battle.timestamp,
+                    `"${battle.player1Name.replace(/"/g, '""')}"`,
+                    `"${battle.player2Name.replace(/"/g, '""')}"`,
+                    `"${battle.winnerName.replace(/"/g, '""')}"`,
+                    battle.player1FinalScore,
+                    battle.player2FinalScore
+                ];
+                csvRows.push(values.join(','));
+            });
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'beyblade_x_records.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function confirmClearHistory() {
+            if(battleHistory.length === 0) return;
+            showConfirmModal('すべての対戦履歴を削除します。この操作は元に戻せません。よろしいですか？', clearHistory);
+        }
+
+        function clearHistory() {
+            battleHistory = [];
+            updateActionButtons();
+        }
+
+        function showConfirmModal(message, onConfirm) {
+            modalMessage.textContent = message;
+            confirmModal.classList.remove('hidden');
+            const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+            const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+            const confirmHandler = () => {
+                onConfirm();
+                confirmModal.classList.add('hidden');
+                cleanup();
+            };
+            const cancelHandler = () => {
+                confirmModal.classList.add('hidden');
+                cleanup();
+            };
+            const cleanup = () => {
+                modalConfirmBtn.removeEventListener('click', confirmHandler);
+                modalCancelBtn.removeEventListener('click', cancelHandler);
+            };
+
+            modalConfirmBtn.addEventListener('click', confirmHandler);
+            modalCancelBtn.addEventListener('click', cancelHandler);
+        }
+
+        /**
+         * Gemini APIを使用してAI実況を生成します。
+         */
+        async function generateCommentary() {
+            generateCommentaryBtn.disabled = true;
+            generateCommentaryBtn.innerHTML = `<div class="w-6 h-6 border-4 border-black rounded-full spinner mx-auto"></div>`; // ローディング表示
+            commentaryDisplayEl.classList.remove('hidden');
+            commentaryDisplayEl.textContent = 'AIが実況を考えています...';
+
+            const lastBattle = battleHistory[battleHistory.length - 1];
+            if (!lastBattle) {
+                commentaryDisplayEl.textContent = '実況を生成できませんでした。';
+                generateCommentaryBtn.innerHTML = '✨ 実況を生成';
+                return;
+            }
+
+            const prompt = `「${lastBattle.player1Name}」と「${lastBattle.player2Name}」がベイブレードXで対戦しました。勝者は「${lastBattle.winnerName}」で、最終スコアは ${lastBattle.player1FinalScore} 対 ${lastBattle.player2FinalScore} でした。このバトルについて、プロのアナウンサーのように、短くドラマチックでエキサイティングな実況を1〜2文で生成してください。`;
+
+            try {
+                const apiKey = ""; // APIキーは空のままにします
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    commentaryDisplayEl.textContent = text;
+                } else {
+                    throw new Error("Invalid API response structure");
+                }
+
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                commentaryDisplayEl.textContent = 'エラーが発生しました。実況を生成できませんでした。';
+            } finally {
+                // ボタンの表示を元に戻す（ただし無効状態は維持）
+                generateCommentaryBtn.innerHTML = '✨ 実況を生成';
+            }
+        }
+
+        // --- 初期化処理 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateUI();
+            updateActionButtons();
+            [player1NameEl, player2NameEl].forEach(el => {
+                el.addEventListener('focus', () => document.execCommand('selectAll', false, null));
+            });
+        });
+    </script>
+</body>
+</html>
